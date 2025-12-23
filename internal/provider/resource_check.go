@@ -156,8 +156,8 @@ func constructCheckPayload(d *schema.ResourceData) updown.CheckItem {
 	if v, ok := d.GetOk("disabled_locations"); ok {
 		interfaceSlice := v.(*schema.Set).List()
 		var stringSlice []string
-		for s := range interfaceSlice {
-			stringSlice = append(stringSlice, interfaceSlice[s].(string))
+		for _, s := range interfaceSlice {
+			stringSlice = append(stringSlice, s.(string))
 		}
 		payload.DisabledLocations = stringSlice
 	}
@@ -165,8 +165,8 @@ func constructCheckPayload(d *schema.ResourceData) updown.CheckItem {
 	if v, ok := d.GetOk("recipients"); ok {
 		interfaceSlice := v.(*schema.Set).List()
 		var stringSlice []string
-		for s := range interfaceSlice {
-			stringSlice = append(stringSlice, interfaceSlice[s].(string))
+		for _, s := range interfaceSlice {
+			stringSlice = append(stringSlice, s.(string))
 		}
 		payload.RecipientIDs = stringSlice
 	}

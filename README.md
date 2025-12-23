@@ -35,6 +35,7 @@ All contributions are welcome!
 | **data** | `updown_nodes` | Returns the list of monitoring nodes IPv4 and IPv6 addresses |
 | **resource** | `updown_check` | Creates and manages a check |
 | **resource** | `updown_recipient` | Creates and manages a recipient |
+| **resource** | `updown_status_page` | Creates and manages a status page |
 | **resource** | `updown_webhook` | Creates a webhook _(DEPRECATED - use recipients instead)_ |
 
 ## Installation
@@ -171,6 +172,45 @@ output "monitoring_nodes_ipv6" {
 }
 ```
 
+### Status Pages
+
+```hcl
+# Public status page
+resource "updown_status_page" "public" {
+  name        = "My Services Status"
+  description = "Public status page for all monitored services"
+  visibility  = "public"
+
+  checks = [
+    updown_check.website.id,
+    updown_check.api.id,
+  ]
+}
+
+# Protected status page with access key
+resource "updown_status_page" "protected" {
+  name        = "Internal Services"
+  description = "Protected status page for internal services"
+  visibility  = "protected"
+  access_key  = "my-secret-access-key"
+
+  checks = [
+    updown_check.internal_api.id,
+  ]
+}
+
+# Private status page (only visible when logged in)
+resource "updown_status_page" "private" {
+  name       = "Private Infrastructure"
+  visibility = "private"
+
+  checks = [
+    updown_check.database.id,
+    updown_check.cache.id,
+  ]
+}
+```
+
 ## Resource Reference
 
 ### updown_check
@@ -196,8 +236,19 @@ output "monitoring_nodes_ipv6" {
 
 | Attribute | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `type` | string | Yes | Recipient type: `email`, `sms`, `webhook`, `slack_compatible` |
+| `type` | string | Yes | Recipient type: `email`, `sms`, `webhook`, `slack_compatible`, `msteams` |
 | `value` | string | Yes | Email address, phone number, or webhook URL |
+
+### updown_status_page
+
+| Attribute | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `checks` | list(string) | Yes | - | List of check tokens to display (order is preserved) |
+| `name` | string | No | - | Name of the status page |
+| `description` | string | No | - | Description text (supports newlines and links) |
+| `visibility` | string | No | `public` | Page visibility: `public`, `protected`, or `private` |
+| `access_key` | string | No | _(auto-generated)_ | Access key for protected pages |
+| `url` | string | Read-only | - | The URL of the status page |
 
 ## API Reference
 

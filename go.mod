@@ -1,6 +1,6 @@
 module github.com/sergo-techhub/terraform-provider-updown
 
-go 1.24.0
+go 1.25
 
 require (
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.38.1
@@ -48,3 +48,5 @@ require (
 	google.golang.org/grpc v1.75.1 // indirect
 	google.golang.org/protobuf v1.36.9 // indirect
 )
+
+replace github.com/sergo-techhub/updown => ../updown
