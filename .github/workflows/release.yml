@@ -1,9 +1,13 @@
 name: Release
 
 on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., v0.1.1)'
+        required: true
+        type: string
   push:
-    branches:
-      - main
     tags:
       - 'v*'
 
@@ -27,13 +31,11 @@ jobs:
       - name: Configure Git
         run: git config --global --add safe.directory /__w/terraform-provider-updown/terraform-provider-updown
 
-      - name: Create version tag
-        if: github.ref == 'refs/heads/main'
+      - name: Create release tag
+        if: github.event_name == 'workflow_dispatch'
         run: |
-          COUNT=$(git rev-list --count HEAD)
-          VERSION="v0.1.${COUNT}"
-          git tag $VERSION
-          echo "Created tag: $VERSION"
+          git tag ${{ inputs.version }}
+          echo "Created tag: ${{ inputs.version }}"
 
       - name: Import GPG key
         id: import_gpg
