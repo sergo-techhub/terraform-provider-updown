@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/sergo-techhub/updown"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
+	"github.com/sergo-techhub/updown"
 )
 
 func checkResource() *schema.Resource {
@@ -103,10 +103,10 @@ func checkResource() *schema.Resource {
 			"http_verb": {
 				Type:        schema.TypeString,
 				Optional:    true,
-				Description: "HTTP method (GET, HEAD, POST, PUT, PATCH, DELETE, OPTIONS). Only for http/https checks.",
+				Description: "HTTP method (GET/HEAD, POST, PUT, PATCH, DELETE, OPTIONS). Only for http/https checks.",
 				Default:     "GET",
 				ValidateFunc: validation.StringInSlice([]string{
-					"GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS",
+					"GET", "GET/HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS",
 				}, false),
 			},
 			"http_body": {

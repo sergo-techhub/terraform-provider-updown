@@ -3,9 +3,9 @@ package provider
 import (
 	"fmt"
 
-	"github.com/sergo-techhub/updown"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
+	"github.com/sergo-techhub/updown"
 )
 
 func statusPageResource() *schema.Resource {

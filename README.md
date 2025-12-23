@@ -125,11 +125,10 @@ resource "updown_check" "postgres" {
 resource "updown_check" "api_health" {
   url       = "https://api.example.com/health"
   alias     = "API Health Check"
-  http_verb = "POST"
-  http_body = jsonencode({ check = true })
+  http_verb = "GET/HEAD"  # Use HEAD requests first, fallback to GET
 
   custom_headers = {
-    "Content-Type" = "application/json"
+    "Accept" = "application/json"
   }
 }
 ```
@@ -226,9 +225,9 @@ resource "updown_status_page" "private" {
 | `published` | bool | No | `false` | Whether to show on public status page |
 | `string_match` | string | No | - | String to search for in response |
 | `mute_until` | string | No | - | Mute notifications until time, `recovery`, or `forever` |
-| `http_verb` | string | No | `GET` | HTTP method for http/https checks |
+| `http_verb` | string | No | `GET` | HTTP method for http/https checks: `GET`, `GET/HEAD`, `POST`, `PUT`, `PATCH`, `DELETE`, `OPTIONS` |
 | `http_body` | string | No | - | Request body for POST/PUT/PATCH |
-| `disabled_locations` | set(string) | No | - | Locations to exclude from monitoring |
+| `disabled_locations` | set(string) | No | - | Locations to exclude from monitoring (max 8) |
 | `recipients` | set(string) | No | - | Recipient IDs for alerts |
 | `custom_headers` | map(string) | No | - | Custom HTTP headers |
 
@@ -236,7 +235,7 @@ resource "updown_status_page" "private" {
 
 | Attribute | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `type` | string | Yes | Recipient type: `email`, `sms`, `webhook`, `slack_compatible`, `msteams` |
+| `type` | string | Yes | Recipient type: `email`, `webhook`, `slack_compatible` (Note: `sms` and `msteams` require web UI setup) |
 | `value` | string | Yes | Email address, phone number, or webhook URL |
 
 ### updown_status_page

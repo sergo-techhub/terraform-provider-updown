@@ -1,8 +1,8 @@
 package provider
 
 import (
-	"github.com/sergo-techhub/updown"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/sergo-techhub/updown"
 )
 
 // New returns a Terraform provider resource
