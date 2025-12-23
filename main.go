@@ -7,7 +7,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/plugin"
 
-	"github.com/mvisonneau/terraform-provider-updown/internal/provider"
+	"github.com/sergo-techhub/terraform-provider-updown/internal/provider"
 )
 
 func main() {
@@ -19,7 +19,7 @@ func main() {
 	opts := &plugin.ServeOpts{ProviderFunc: provider.New()}
 
 	if debugMode {
-		err := plugin.Debug(context.Background(), "registry.terraform.io/mvisonneau/updown", opts)
+		err := plugin.Debug(context.Background(), "registry.terraform.io/sergo-techhub/updown", opts)
 		if err != nil {
 			log.Fatal(err.Error())
 		}

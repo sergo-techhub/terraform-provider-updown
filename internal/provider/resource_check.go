@@ -2,9 +2,11 @@ package provider
 
 import (
 	"fmt"
+	"strings"
 
-	"github.com/antoineaugusti/updown"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
+	"github.com/sergo-techhub/updown"
 )
 
 func checkResource() *schema.Resource {
@@ -77,6 +79,7 @@ func checkResource() *schema.Resource {
 			"recipients": {
 				Type:        schema.TypeSet,
 				Optional:    true,
+				Computed:    true,
 				Description: "Selected alert recipients. It's an array of recipient IDs you can get from the recipients API.",
 				Elem: &schema.Schema{
 					Type: schema.TypeString,
@@ -89,6 +92,36 @@ func checkResource() *schema.Resource {
 				Elem: &schema.Schema{
 					Type: schema.TypeString,
 				},
+			},
+			"type": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				Computed:    true,
+				Description: "The type of check (http, https, icmp, tcp, tcps). Inferred from URL scheme if not specified.",
+				ValidateFunc: validation.StringInSlice([]string{
+					"http", "https", "icmp", "tcp", "tcps",
+				}, false),
+			},
+			"http_verb": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				Description: "HTTP method (GET/HEAD, POST, PUT, PATCH, DELETE, OPTIONS). Only for http/https checks.",
+				Default:     "GET/HEAD",
+				ValidateFunc: validation.StringInSlice([]string{
+					"GET", "GET/HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS",
+				}, false),
+				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
+					// Treat "GET" and "GET/HEAD" as equivalent
+					if (old == "GET" || old == "GET/HEAD") && (new == "GET" || new == "GET/HEAD") {
+						return true
+					}
+					return false
+				},
+			},
+			"http_body": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				Description: "Request body for POST/PUT/PATCH requests. Only for http/https checks.",
 			},
 		},
 	}
@@ -132,8 +165,8 @@ func constructCheckPayload(d *schema.ResourceData) updown.CheckItem {
 	if v, ok := d.GetOk("disabled_locations"); ok {
 		interfaceSlice := v.(*schema.Set).List()
 		var stringSlice []string
-		for s := range interfaceSlice {
-			stringSlice = append(stringSlice, interfaceSlice[s].(string))
+		for _, s := range interfaceSlice {
+			stringSlice = append(stringSlice, s.(string))
 		}
 		payload.DisabledLocations = stringSlice
 	}
@@ -141,8 +174,8 @@ func constructCheckPayload(d *schema.ResourceData) updown.CheckItem {
 	if v, ok := d.GetOk("recipients"); ok {
 		interfaceSlice := v.(*schema.Set).List()
 		var stringSlice []string
-		for s := range interfaceSlice {
-			stringSlice = append(stringSlice, interfaceSlice[s].(string))
+		for _, s := range interfaceSlice {
+			stringSlice = append(stringSlice, s.(string))
 		}
 		payload.RecipientIDs = stringSlice
 	}
@@ -154,6 +187,28 @@ func constructCheckPayload(d *schema.ResourceData) updown.CheckItem {
 		}
 	}
 
+	// Get type for isHttpCheck logic
+	checkType := d.Get("type").(string)
+
+	// Only send type on CREATE (no ID yet), not on UPDATE
+	// The API ignores http_verb updates when type is in the payload
+	if d.Id() == "" && checkType != "" {
+		payload.Type = checkType
+	}
+
+	// Only set http_verb and http_body for HTTP/HTTPS checks
+	isHttpCheck := checkType == "" || checkType == "http" || checkType == "https"
+	if isHttpCheck {
+		httpVerb := d.Get("http_verb").(string)
+		if httpVerb != "" {
+			payload.HttpVerb = httpVerb
+		}
+
+		if v, ok := d.GetOk("http_body"); ok {
+			payload.HttpBody = v.(string)
+		}
+	}
+
 	return payload
 }
 
@@ -162,7 +217,7 @@ func checkCreate(d *schema.ResourceData, meta interface{}) error {
 
 	check, _, err := client.Check.Add(constructCheckPayload(d))
 	if err != nil {
-		return fmt.Errorf("creating check with the API")
+		return fmt.Errorf("creating check with the API: %w", err)
 	}
 
 	d.SetId(check.Token)
@@ -175,11 +230,30 @@ func checkRead(d *schema.ResourceData, meta interface{}) error {
 	check, _, err := client.Check.Get(d.Id())
 
 	if err != nil {
-		return fmt.Errorf("reading check from the API")
+		return fmt.Errorf("reading check from the API: %w", err)
+	}
+
+	// Normalize URL by stripping protocol prefix for non-HTTP checks
+	// The API returns URLs like "icmp://192.168.1.1" but we store just "192.168.1.1"
+	normalizedURL := check.URL
+	isHttpCheck := check.Type == "" || check.Type == "http" || check.Type == "https"
+
+	if check.Type == "icmp" {
+		normalizedURL = strings.TrimPrefix(normalizedURL, "icmp://")
+	}
+
+	// Normalize http_verb
+	httpVerb := check.HttpVerb
+	httpBody := check.HttpBody
+	if !isHttpCheck {
+		httpVerb = "GET/HEAD" // Match schema default for non-HTTP checks
+		httpBody = ""
+	} else if httpVerb == "GET" {
+		httpVerb = "GET/HEAD" // API accepts GET, returns GET/HEAD
 	}
 
 	for k, v := range map[string]interface{}{
-		"url":                check.URL,
+		"url":                normalizedURL,
 		"period":             check.Period,
 		"apdex_t":            check.Apdex,
 		"enabled":            check.Enabled,
@@ -190,6 +264,9 @@ func checkRead(d *schema.ResourceData, meta interface{}) error {
 		"disabled_locations": check.DisabledLocations,
 		"recipients":         check.RecipientIDs,
 		"custom_headers":     check.CustomHeaders,
+		"type":               check.Type,
+		"http_verb":          httpVerb,
+		"http_body":          httpBody,
 	} {
 		if err := d.Set(k, v); err != nil {
 			return err
@@ -204,10 +281,10 @@ func checkUpdate(d *schema.ResourceData, meta interface{}) error {
 
 	_, _, err := client.Check.Update(d.Id(), constructCheckPayload(d))
 	if err != nil {
-		return fmt.Errorf("updating check with the API")
+		return fmt.Errorf("updating check with the API: %w", err)
 	}
 
-	return nil
+	return checkRead(d, meta)
 }
 
 func checkDelete(d *schema.ResourceData, meta interface{}) error {
@@ -215,7 +292,7 @@ func checkDelete(d *schema.ResourceData, meta interface{}) error {
 	checkDeleted, _, err := client.Check.Remove(d.Id())
 
 	if err != nil {
-		return fmt.Errorf("removing check from the API")
+		return fmt.Errorf("removing check from the API: %w", err)
 	}
 
 	if !checkDeleted {

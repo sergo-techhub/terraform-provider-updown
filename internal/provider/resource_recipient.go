@@ -3,8 +3,8 @@ package provider
 import (
 	"fmt"
 
-	"github.com/antoineaugusti/updown"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/sergo-techhub/updown"
 )
 
 func recipientResource() *schema.Resource {
@@ -40,7 +40,7 @@ func recipientResource() *schema.Resource {
 func constructRecipientPayload(d *schema.ResourceData) updown.RecipientItem {
 	payload := updown.RecipientItem{}
 	if v, ok := d.GetOk("type"); ok {
-		payload.Type = v.(updown.RecipientType)
+		payload.Type = updown.RecipientType(v.(string))
 	}
 
 	if v, ok := d.GetOk("value"); ok {

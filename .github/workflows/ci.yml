@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: golang:1.25-alpine
+    steps:
+      - name: Install Git
+        run: apk add --no-cache git
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure Git
+        run: git config --global --add safe.directory /__w/terraform-provider-updown/terraform-provider-updown
+
+      - name: Format Check
+        run: |
+          if [ -n "$(gofmt -l .)" ]; then
+            echo "Go code is not formatted. Run 'gofmt -w .' to fix."
+            gofmt -d .
+            exit 1
+          fi
+
+      - name: Build
+        run: go build -v ./...
+
+      - name: Test
+        env:
+          TF_ACC: "1"
+          UPDOWN_API_KEY: ${{ secrets.UPDOWN_API_KEY }}
+        run: go test -v ./...
+
+      - name: Vet
+        run: go vet ./...

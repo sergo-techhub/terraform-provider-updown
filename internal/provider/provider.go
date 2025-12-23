@@ -1,8 +1,8 @@
 package provider
 
 import (
-	"github.com/antoineaugusti/updown"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/sergo-techhub/updown"
 )
 
 // New returns a Terraform provider resource
@@ -25,14 +25,16 @@ func New() func() *schema.Provider {
 			},
 
 			ResourcesMap: map[string]*schema.Resource{
-				"updown_check":     checkResource(),
-				"updown_webhook":   webhookResource(),
-				"updown_recipient": recipientResource(),
+				"updown_check":       checkResource(),
+				"updown_recipient":   recipientResource(),
+				"updown_status_page": statusPageResource(),
 			},
 		}
 	}
 }
 
 func providerConfigure(d *schema.ResourceData) (interface{}, error) {
-	return updown.NewClient(d.Get("api_key").(string), nil), nil
+	client := updown.NewClient(d.Get("api_key").(string), nil)
+	client.SkipCache = true
+	return client, nil
 }
