@@ -1,7 +1,7 @@
 package provider
 
 import (
-	"github.com/antoineaugusti/updown"
+	"github.com/sergo-techhub/updown"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 

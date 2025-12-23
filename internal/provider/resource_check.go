@@ -2,9 +2,11 @@ package provider
 
 import (
 	"fmt"
+	"strings"
 
-	"github.com/antoineaugusti/updown"
+	"github.com/sergo-techhub/updown"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 )
 
 func checkResource() *schema.Resource {
@@ -90,6 +92,28 @@ func checkResource() *schema.Resource {
 					Type: schema.TypeString,
 				},
 			},
+			"type": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				Description: "The type of check (http, https, icmp, tcp, tcps). Inferred from URL scheme if not specified.",
+				ValidateFunc: validation.StringInSlice([]string{
+					"http", "https", "icmp", "tcp", "tcps",
+				}, false),
+			},
+			"http_verb": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				Description: "HTTP method (GET, HEAD, POST, PUT, PATCH, DELETE, OPTIONS). Only for http/https checks.",
+				Default:     "GET",
+				ValidateFunc: validation.StringInSlice([]string{
+					"GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS",
+				}, false),
+			},
+			"http_body": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				Description: "Request body for POST/PUT/PATCH requests. Only for http/https checks.",
+			},
 		},
 	}
 }
@@ -154,6 +178,26 @@ func constructCheckPayload(d *schema.ResourceData) updown.CheckItem {
 		}
 	}
 
+	checkType := ""
+	if v, ok := d.GetOk("type"); ok {
+		checkType = v.(string)
+		payload.Type = checkType
+	}
+
+	// Only set http_verb and http_body for HTTP/HTTPS checks
+	// Don't send http_verb if it's the default GET - API defaults to GET
+	isHttpCheck := checkType == "" || checkType == "http" || checkType == "https"
+	if isHttpCheck {
+		httpVerb := d.Get("http_verb").(string)
+		if httpVerb != "" && httpVerb != "GET" {
+			payload.HttpVerb = httpVerb
+		}
+
+		if v, ok := d.GetOk("http_body"); ok {
+			payload.HttpBody = v.(string)
+		}
+	}
+
 	return payload
 }
 
@@ -162,7 +206,7 @@ func checkCreate(d *schema.ResourceData, meta interface{}) error {
 
 	check, _, err := client.Check.Add(constructCheckPayload(d))
 	if err != nil {
-		return fmt.Errorf("creating check with the API")
+		return fmt.Errorf("creating check with the API: %w", err)
 	}
 
 	d.SetId(check.Token)
@@ -175,11 +219,28 @@ func checkRead(d *schema.ResourceData, meta interface{}) error {
 	check, _, err := client.Check.Get(d.Id())
 
 	if err != nil {
-		return fmt.Errorf("reading check from the API")
+		return fmt.Errorf("reading check from the API: %w", err)
+	}
+
+	// Normalize URL by stripping protocol prefix for non-HTTP checks
+	// The API returns URLs like "icmp://192.168.1.1" but we store just "192.168.1.1"
+	normalizedURL := check.URL
+	isHttpCheck := check.Type == "" || check.Type == "http" || check.Type == "https"
+
+	if check.Type == "icmp" {
+		normalizedURL = strings.TrimPrefix(normalizedURL, "icmp://")
+	}
+
+	// For non-HTTP checks, set http_verb to match schema default to prevent drift
+	httpVerb := check.HttpVerb
+	httpBody := check.HttpBody
+	if !isHttpCheck {
+		httpVerb = "GET" // Match schema default
+		httpBody = ""
 	}
 
 	for k, v := range map[string]interface{}{
-		"url":                check.URL,
+		"url":                normalizedURL,
 		"period":             check.Period,
 		"apdex_t":            check.Apdex,
 		"enabled":            check.Enabled,
@@ -190,6 +251,9 @@ func checkRead(d *schema.ResourceData, meta interface{}) error {
 		"disabled_locations": check.DisabledLocations,
 		"recipients":         check.RecipientIDs,
 		"custom_headers":     check.CustomHeaders,
+		"type":               check.Type,
+		"http_verb":          httpVerb,
+		"http_body":          httpBody,
 	} {
 		if err := d.Set(k, v); err != nil {
 			return err
@@ -204,7 +268,7 @@ func checkUpdate(d *schema.ResourceData, meta interface{}) error {
 
 	_, _, err := client.Check.Update(d.Id(), constructCheckPayload(d))
 	if err != nil {
-		return fmt.Errorf("updating check with the API")
+		return fmt.Errorf("updating check with the API: %w", err)
 	}
 
 	return nil
@@ -215,7 +279,7 @@ func checkDelete(d *schema.ResourceData, meta interface{}) error {
 	checkDeleted, _, err := client.Check.Remove(d.Id())
 
 	if err != nil {
-		return fmt.Errorf("removing check from the API")
+		return fmt.Errorf("removing check from the API: %w", err)
 	}
 
 	if !checkDeleted {

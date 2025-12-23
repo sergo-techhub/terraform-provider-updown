@@ -7,7 +7,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/plugin"
 
-	"github.com/mvisonneau/terraform-provider-updown/internal/provider"
+	"github.com/sergo-techhub/terraform-provider-updown/internal/provider"
 )
 
 func main() {
