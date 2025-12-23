@@ -33,6 +33,9 @@ jobs:
         run: go build -v ./...
 
       - name: Test
+        env:
+          TF_ACC: "1"
+          UPDOWN_API_KEY: ${{ secrets.UPDOWN_API_KEY }}
         run: go test -v ./...
 
       - name: Vet
