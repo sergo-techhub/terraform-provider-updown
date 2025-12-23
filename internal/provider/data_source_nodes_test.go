@@ -24,4 +24,3 @@ func TestAccUpdownNodesDataSource_basic(t *testing.T) {
 const testAccUpdownNodesDataSourceConfig = `
 data "updown_nodes" "all" {}
 `
-

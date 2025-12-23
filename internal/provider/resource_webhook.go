@@ -3,8 +3,8 @@ package provider
 import (
 	"fmt"
 
-	"github.com/sergo-techhub/updown"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/sergo-techhub/updown"
 )
 
 func webhookResource() *schema.Resource {
