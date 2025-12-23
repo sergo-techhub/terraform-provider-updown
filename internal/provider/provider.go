@@ -26,7 +26,6 @@ func New() func() *schema.Provider {
 
 			ResourcesMap: map[string]*schema.Resource{
 				"updown_check":       checkResource(),
-				"updown_webhook":     webhookResource(),
 				"updown_recipient":   recipientResource(),
 				"updown_status_page": statusPageResource(),
 			},
@@ -35,5 +34,7 @@ func New() func() *schema.Provider {
 }
 
 func providerConfigure(d *schema.ResourceData) (interface{}, error) {
-	return updown.NewClient(d.Get("api_key").(string), nil), nil
+	client := updown.NewClient(d.Get("api_key").(string), nil)
+	client.SkipCache = true
+	return client, nil
 }

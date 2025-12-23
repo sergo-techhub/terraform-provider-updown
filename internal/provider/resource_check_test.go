@@ -90,6 +90,7 @@ func TestAccUpdownCheck_httpVerb(t *testing.T) {
 				),
 			},
 			{
+				// Update back to default GET/HEAD
 				Config: testAccUpdownCheckConfig_httpVerb(rName, "GET/HEAD"),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckUpdownCheckExists(resourceName),

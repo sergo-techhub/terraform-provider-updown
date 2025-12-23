@@ -75,7 +75,7 @@ func TestAccUpdownStatusPage_protected(t *testing.T) {
 
 func TestAccUpdownStatusPage_update(t *testing.T) {
 	rName := fmt.Sprintf("tf-test-%s", acctest.RandString(10))
-	rNameUpdated := fmt.Sprintf("tf-test-%s", acctest.RandString(10))
+	rNameUpdated := rName + "-updated"
 	resourceName := "updown_status_page.test"
 
 	resource.Test(t, resource.TestCase{
@@ -84,14 +84,14 @@ func TestAccUpdownStatusPage_update(t *testing.T) {
 		CheckDestroy:      testAccCheckUpdownStatusPageDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccUpdownStatusPageConfig_basic(rName),
+				Config: testAccUpdownStatusPageConfig_update(rName, rName),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckUpdownStatusPageExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "name", rName),
 				),
 			},
 			{
-				Config: testAccUpdownStatusPageConfig_basic(rNameUpdated),
+				Config: testAccUpdownStatusPageConfig_update(rName, rNameUpdated),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckUpdownStatusPageExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "name", rNameUpdated),
@@ -138,6 +138,21 @@ resource "updown_status_page" "test" {
   checks     = [updown_check.test.id]
 }
 `, rName)
+}
+
+func testAccUpdownStatusPageConfig_update(checkName, statusPageName string) string {
+	return fmt.Sprintf(`
+resource "updown_check" "test" {
+  url   = "https://example.com"
+  alias = "%[1]s-check"
+}
+
+resource "updown_status_page" "test" {
+  name       = %[2]q
+  visibility = "private"
+  checks     = [updown_check.test.id]
+}
+`, checkName, statusPageName)
 }
 
 func testAccUpdownStatusPageConfig_public(rName string) string {

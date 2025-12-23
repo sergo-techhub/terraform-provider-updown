@@ -4,7 +4,7 @@ go 1.25
 
 require (
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.38.1
-	github.com/sergo-techhub/updown v0.2.50
+	github.com/sergo-techhub/updown v0.3.0
 )
 
 require (

@@ -14,7 +14,8 @@ func TestAccUpdownNodesDataSource_basic(t *testing.T) {
 			{
 				Config: testAccUpdownNodesDataSourceConfig,
 				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttrSet("data.updown_nodes.all", "nodes.#"),
+					resource.TestCheckResourceAttrSet("data.updown_nodes.all", "ipv4.#"),
+					resource.TestCheckResourceAttrSet("data.updown_nodes.all", "ipv6.#"),
 				),
 			},
 		},

@@ -79,6 +79,7 @@ func checkResource() *schema.Resource {
 			"recipients": {
 				Type:        schema.TypeSet,
 				Optional:    true,
+				Computed:    true,
 				Description: "Selected alert recipients. It's an array of recipient IDs you can get from the recipients API.",
 				Elem: &schema.Schema{
 					Type: schema.TypeString,
@@ -95,6 +96,7 @@ func checkResource() *schema.Resource {
 			"type": {
 				Type:        schema.TypeString,
 				Optional:    true,
+				Computed:    true,
 				Description: "The type of check (http, https, icmp, tcp, tcps). Inferred from URL scheme if not specified.",
 				ValidateFunc: validation.StringInSlice([]string{
 					"http", "https", "icmp", "tcp", "tcps",
@@ -104,10 +106,17 @@ func checkResource() *schema.Resource {
 				Type:        schema.TypeString,
 				Optional:    true,
 				Description: "HTTP method (GET/HEAD, POST, PUT, PATCH, DELETE, OPTIONS). Only for http/https checks.",
-				Default:     "GET",
+				Default:     "GET/HEAD",
 				ValidateFunc: validation.StringInSlice([]string{
 					"GET", "GET/HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS",
 				}, false),
+				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
+					// Treat "GET" and "GET/HEAD" as equivalent
+					if (old == "GET" || old == "GET/HEAD") && (new == "GET" || new == "GET/HEAD") {
+						return true
+					}
+					return false
+				},
 			},
 			"http_body": {
 				Type:        schema.TypeString,
@@ -178,18 +187,20 @@ func constructCheckPayload(d *schema.ResourceData) updown.CheckItem {
 		}
 	}
 
-	checkType := ""
-	if v, ok := d.GetOk("type"); ok {
-		checkType = v.(string)
+	// Get type for isHttpCheck logic
+	checkType := d.Get("type").(string)
+
+	// Only send type on CREATE (no ID yet), not on UPDATE
+	// The API ignores http_verb updates when type is in the payload
+	if d.Id() == "" && checkType != "" {
 		payload.Type = checkType
 	}
 
 	// Only set http_verb and http_body for HTTP/HTTPS checks
-	// Don't send http_verb if it's the default GET - API defaults to GET
 	isHttpCheck := checkType == "" || checkType == "http" || checkType == "https"
 	if isHttpCheck {
 		httpVerb := d.Get("http_verb").(string)
-		if httpVerb != "" && httpVerb != "GET" {
+		if httpVerb != "" {
 			payload.HttpVerb = httpVerb
 		}
 
@@ -231,12 +242,14 @@ func checkRead(d *schema.ResourceData, meta interface{}) error {
 		normalizedURL = strings.TrimPrefix(normalizedURL, "icmp://")
 	}
 
-	// For non-HTTP checks, set http_verb to match schema default to prevent drift
+	// Normalize http_verb
 	httpVerb := check.HttpVerb
 	httpBody := check.HttpBody
 	if !isHttpCheck {
-		httpVerb = "GET" // Match schema default
+		httpVerb = "GET/HEAD" // Match schema default for non-HTTP checks
 		httpBody = ""
+	} else if httpVerb == "GET" {
+		httpVerb = "GET/HEAD" // API accepts GET, returns GET/HEAD
 	}
 
 	for k, v := range map[string]interface{}{
@@ -271,7 +284,7 @@ func checkUpdate(d *schema.ResourceData, meta interface{}) error {
 		return fmt.Errorf("updating check with the API: %w", err)
 	}
 
-	return nil
+	return checkRead(d, meta)
 }
 
 func checkDelete(d *schema.ResourceData, meta interface{}) error {
