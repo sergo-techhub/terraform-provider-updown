@@ -31,7 +31,7 @@ jobs:
         if: github.ref == 'refs/heads/main'
         run: |
           COUNT=$(git rev-list --count HEAD)
-          VERSION="v0.0.${COUNT}"
+          VERSION="v0.1.${COUNT}"
           git tag $VERSION
           echo "Created tag: $VERSION"
 
