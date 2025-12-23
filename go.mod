@@ -4,7 +4,7 @@ go 1.25
 
 require (
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.38.1
-	github.com/sergo-techhub/updown v0.1.0
+	github.com/sergo-techhub/updown v0.2.0
 )
 
 require (
@@ -59,5 +59,3 @@ require (
 	google.golang.org/grpc v1.75.1 // indirect
 	google.golang.org/protobuf v1.36.9 // indirect
 )
-
-replace github.com/sergo-techhub/updown => ../updown
