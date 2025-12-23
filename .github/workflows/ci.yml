@@ -18,6 +18,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Configure Git
+        run: git config --global --add safe.directory /__w/terraform-provider-updown/terraform-provider-updown
+
       - name: Format Check
         run: |
           if [ -n "$(gofmt -l .)" ]; then
