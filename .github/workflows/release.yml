@@ -24,6 +24,9 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Configure Git
+        run: git config --global --add safe.directory /__w/terraform-provider-updown/terraform-provider-updown
+
       - name: Create version tag
         if: github.ref == 'refs/heads/main'
         run: |
