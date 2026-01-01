@@ -73,9 +73,13 @@ func recipientRead(d *schema.ResourceData, meta interface{}) error {
 
 	for _, r := range recipients {
 		if d.Id() == r.ID {
+			value := r.Name
+			if r.Type == updown.RecipientTypeWebhook {
+				value = r.Value
+			}
 			for k, v := range map[string]interface{}{
 				"type":  string(r.Type),
-				"value": r.Name,
+				"value": value,
 			} {
 				if err := d.Set(k, v); err != nil {
 					return err
